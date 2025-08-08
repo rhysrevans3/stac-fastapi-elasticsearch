@@ -84,6 +84,7 @@ class ElasticPath(BaseModel):
     es_index: Optional[str] = None
 
     variable_name: Optional[str] = None
+    param_key: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod

@@ -859,6 +859,7 @@ class DatabaseLogic(BaseDatabaseLogic):
             operations=operations,
             base_url=base_url,
             refresh=refresh,
+            create_nest=True,
         )
 
     async def json_patch_item(
@@ -868,6 +869,7 @@ class DatabaseLogic(BaseDatabaseLogic):
         operations: List[PatchOperation],
         base_url: str,
         refresh: bool = True,
+        create_nest: bool = True,
     ) -> Item:
         """Database logic for json patching an item following RF6902.
 
@@ -901,7 +903,7 @@ class DatabaseLogic(BaseDatabaseLogic):
             else:
                 script_operations.append(operation)
 
-        script = operations_to_script(script_operations)
+        script = operations_to_script(script_operations, create_nest=create_nest)
 
         try:
             await self.client.update(

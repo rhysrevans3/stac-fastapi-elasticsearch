@@ -90,6 +90,7 @@ def check_commands(
     op: str,
     path: ElasticPath,
     from_path: bool = False,
+    create_nest: bool = True,
 ) -> None:
     """Add Elasticsearch checks to operation.
 
@@ -103,12 +104,26 @@ def check_commands(
     if path.nest:
         part_nest = ""
 
-        for path_part in path.parts:
+        for index, path_part in enumerate(path.parts):
 
-            commands.add(
-                f"if (!ctx._source{part_nest}.containsKey('{path_part}'))"
-                f"{{Debug.explain('{path_part} in {path.nest} does not exist');}}"
-            )
+            # Create nested dictionaries if not present for merge operations
+            if create_nest:
+                value = "params.nest_obj"
+                for sub_part in reversed(path.parts[index + 1 :]):
+                    value = f"['{sub_part}': {value}]"
+
+                commands.add(
+                    f"if (!ctx._source{part_nest}.containsKey('{path_part}'))"
+                    f"{{ctx._source{part_nest}['{path_part}'] = {value};}}"
+                    f"{'' if index == len(path.parts) - 1 else' else '}"
+                )
+
+            else:
+                commands.add(
+                    f"if (!ctx._source{part_nest}.containsKey('{path_part}'))"
+                    f"{{Debug.explain('{path_part} in {path.nest} does not exist');}}"
+                )
+
             part_nest += f"['{path_part}']"
 
     if path.index or from_path or op in ["remove", "replace", "test"]:
@@ -202,7 +217,7 @@ def test_commands(
     )
 
 
-def operations_to_script(operations: List) -> Dict:
+def operations_to_script(operations: List, create_nest: bool = True) -> Dict:
     """Convert list of operation to painless script.
 
     Args:
@@ -212,7 +227,7 @@ def operations_to_script(operations: List) -> Dict:
         Dict: elasticsearch update script.
     """
     commands: ESCommandSet = ESCommandSet()
-    params: Dict = {}
+    params: Dict = {"nest_obj": {}}
 
     for operation in operations:
         path = ElasticPath(path=operation.path)
@@ -220,10 +235,16 @@ def operations_to_script(operations: List) -> Dict:
             ElasticPath(path=operation.from_) if hasattr(operation, "from_") else None
         )
 
-        check_commands(commands=commands, op=operation.op, path=path)
+        check_commands(
+            commands=commands, op=operation.op, path=path, create_nest=create_nest
+        )
         if from_path is not None:
             check_commands(
-                commands=commands, op=operation.op, path=from_path, from_path=True
+                commands=commands,
+                op=operation.op,
+                path=from_path,
+                from_path=True,
+                create_nest=create_nest,
             )
 
         if operation.op in ["remove", "move"]:
