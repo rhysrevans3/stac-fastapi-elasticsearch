@@ -101,23 +101,28 @@ def check_commands(
 
     """
     if path.nest:
-        commands.add(
-            f"if (!ctx._source.containsKey('{path.nest}'))"
-            f"{{Debug.explain('{path.nest} does not exist');}}"
-        )
+        part_nest = ""
 
-    if path.index or op in ["remove", "replace", "test"] or from_path:
+        for path_part in path.parts:
+
+            commands.add(
+                f"if (!ctx._source{part_nest}.containsKey('{path_part}'))"
+                f"{{Debug.explain('{path_part} in {path.nest} does not exist');}}"
+            )
+            part_nest += f"['{path_part}']"
+
+    if path.index or from_path or op in ["remove", "replace", "test"]:
         commands.add(
             f"if (!ctx._source{path.es_nest}.containsKey('{path.key}'))"
-            f"{{Debug.explain('{path.key}  does not exist in {path.nest}');}}"
+            f"{{Debug.explain('{path.key} does not exist in {path.nest}');}}"
         )
 
     if from_path and path.index is not None:
         commands.add(
             f"if ((ctx._source{path.es_location} instanceof ArrayList"
-            f" && ctx._source{path.es_location}.size() < {path.index})"
+            f" && ctx._source{path.es_location}.size() < {abs(path.index)})"
             f" || (!(ctx._source{path.es_location} instanceof ArrayList)"
-            f" && !ctx._source{path.es_location}.containsKey('{path.index}')))"
+            f" && !ctx._source{path.es_location}.containsKey('{path.es_index}')))"
             f"{{Debug.explain('{path.path} does not exist');}}"
         )
 
@@ -132,7 +137,7 @@ def remove_commands(commands: ESCommandSet, path: ElasticPath) -> None:
     """
     if path.index is not None:
         commands.add(
-            f"def {path.variable_name} = ctx._source{path.es_location}.remove({path.index});"
+            f"def {path.variable_name} = ctx._source{path.es_location}.remove({path.es_index});"
         )
 
     else:
@@ -160,7 +165,7 @@ def add_commands(
         value = (
             from_path.variable_name
             if operation.op == "move"
-            else f"ctx._source.{from_path.es_path}"
+            else f"ctx._source{from_path.es_location}"
         )
     else:
         value = f"params.{path.param_key}"
@@ -169,12 +174,12 @@ def add_commands(
     if path.index is not None:
         commands.add(
             f"if (ctx._source{path.es_location} instanceof ArrayList)"
-            f"{{ctx._source{path.es_location}.{'add' if operation.op in ['add', 'move'] else 'set'}({path.index}, {value})}}"
-            f"else{{ctx._source.{path.es_path} = {value}}}"
+            f"{{ctx._source{path.es_location}.{'add' if operation.op in ['add', 'move'] else 'set'}({path.es_index}, {value})}}"
+            f"else{{ctx._source{path.es_location}['{path.index}'] = {value}}}"
         )
 
     else:
-        commands.add(f"ctx._source.{path.es_path} = {value};")
+        commands.add(f"ctx._source{path.es_location} = {value};")
 
 
 def test_commands(
@@ -191,9 +196,9 @@ def test_commands(
     params[path.param_key] = operation.value
 
     commands.add(
-        f"if (ctx._source.{path.es_path} != {value})"
-        f"{{Debug.explain('Test failed `{path.path}` | "
-        f"{operation.json_value} != ' + ctx._source.{path.es_path});}}"
+        f"if (ctx._source{path.es_location} != {value})"
+        f"{{Debug.explain('Test failed `{path.location}` | "
+        f"{operation.json_value} != ' + ctx._source{path.es_location});}}"
     )
 
 
