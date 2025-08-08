@@ -8,9 +8,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v6.1.0] - 2025-07-24
+
+### Added
+
+- Added the ability to set timeout for Opensearch and Elasticsearch clients by setting the environmental variable `ES_TIMEOUT` [#408](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/pull/408)
+- Added `collection-search#filter` conformance class to CollectionSearchExtension to enable compatibility with stac-auth-proxy collection filtering  [#411](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/pull/411)
+
+### Changed
+
+- Updated collection to index logic to support searching a large amount of indices [#412](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/pull/412)
+- Updated documentation to reflect use of ES environment variables [#410](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/pull/410)
+- Updated documentation to reflect `APP_PORT` in [stac-fastapi-core ApiSettings](https://github.com/stac-utils/stac-fastapi/blob/fa42985255fad0bab7dbe3aadbf1f74cb1635f3a/stac_fastapi/types/stac_fastapi/types/config.py#L30) [#410](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/pull/410)
+
+## [v6.0.0] - 2025-06-22
+
 ### Added
 
 - Added support for PATCH update through  [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) and [RFC 7396](https://datatracker.ietf.org/doc/html/rfc7396) [#291](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/pull/291)
+
+### Changed
+
+- Updated stac-fastapi parent libraries to v6.0.0 [#291](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/pull/291)
 
 ## [v5.0.0] - 2025-06-11
 
@@ -423,7 +442,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Use genexp in execute_search and get_all_collections to return results.
 - Added db_to_stac serializer to item_collection method in core.py.
 
-[Unreleased]: https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/compare/v5.0.0...main
+[Unreleased]: https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/compare/v6.1.0...main
+[v6.1.0]: https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/compare/v6.0.0...v6.1.0
+[v6.0.0]: https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/compare/v5.0.0...v6.0.0
 [v5.0.0]: https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/compare/v4.2.0...v5.0.0
 [v4.2.0]: https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/compare/v4.1.0...v4.2.0
 [v4.1.0]: https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch/compare/v4.0.0...v4.1.0
