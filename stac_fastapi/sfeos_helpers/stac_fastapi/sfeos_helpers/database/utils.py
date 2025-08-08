@@ -122,7 +122,7 @@ def check_commands(
             f"if ((ctx._source{path.es_location} instanceof ArrayList"
             f" && ctx._source{path.es_location}.size() < {abs(path.index)})"
             f" || (!(ctx._source{path.es_location} instanceof ArrayList)"
-            f" && !ctx._source{path.es_location}.containsKey('{path.es_index}')))"
+            f" && !ctx._source{path.es_location}.containsKey('{path.index}')))"
             f"{{Debug.explain('{path.path} does not exist');}}"
         )
 
