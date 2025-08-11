@@ -903,7 +903,7 @@ class DatabaseLogic(BaseDatabaseLogic):
             else:
                 script_operations.append(operation)
 
-        script = operations_to_script(script_operations, create_nest=create_nest)
+        script = operations_to_script(script_operations)
 
         try:
             await self.client.update(
