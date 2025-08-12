@@ -138,7 +138,7 @@ def check_commands(
             f" && ctx._source{path.es_location}.size() < {abs(path.index)})"
             f" || (!(ctx._source{path.es_location} instanceof ArrayList)"
             f" && !ctx._source{path.es_location}.containsKey('{path.index}')))"
-            f"{{Debug.explain('{path.path} does not exist');}}"
+            f"{{Debug.explain('{path.es_location} does not exist');}}"
         )
 
 
@@ -235,16 +235,13 @@ def operations_to_script(operations: List, create_nest: bool = True) -> Dict:
             ElasticPath(path=operation.from_) if hasattr(operation, "from_") else None
         )
 
-        check_commands(
-            commands=commands, op=operation.op, path=path, create_nest=create_nest
-        )
+        check_commands(commands=commands, op=operation.op, path=path)
         if from_path is not None:
             check_commands(
                 commands=commands,
                 op=operation.op,
                 path=from_path,
                 from_path=True,
-                create_nest=create_nest,
             )
 
         if operation.op in ["remove", "move"]:
