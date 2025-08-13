@@ -108,7 +108,7 @@ def check_commands(
 
             # Create nested dictionaries if not present for merge operations
             if create_nest:
-                value = "params.nest_obj"
+                value = "[:]"
                 for sub_part in reversed(path.parts[index + 1 :]):
                     value = f"['{sub_part}': {value}]"
 
@@ -151,14 +151,10 @@ def remove_commands(commands: ESCommandSet, path: ElasticPath) -> None:
 
     """
     if path.index is not None:
-        commands.add(
-            f"def {path.variable_name} = ctx._source{path.es_location}.remove({path.es_index});"
-        )
+        commands.add(f"def {path.variable_name} = ctx._source{path.es_location}.remove({path.es_index});")
 
     else:
-        commands.add(
-            f"def {path.variable_name} = ctx._source{path.es_nest}.remove('{path.key}');"
-        )
+        commands.add(f"def {path.variable_name} = ctx._source{path.es_nest}.remove('{path.key}');")
 
 
 def add_commands(
@@ -177,11 +173,7 @@ def add_commands(
 
     """
     if from_path is not None:
-        value = (
-            from_path.variable_name
-            if operation.op == "move"
-            else f"ctx._source{from_path.es_location}"
-        )
+        value = from_path.variable_name if operation.op == "move" else f"ctx._source{from_path.es_location}"
     else:
         value = f"params.{path.param_key}"
         params[path.param_key] = operation.value
@@ -197,9 +189,7 @@ def add_commands(
         commands.add(f"ctx._source{path.es_location} = {value};")
 
 
-def test_commands(
-    commands: ESCommandSet, operation: PatchOperation, path: ElasticPath, params: Dict
-) -> None:
+def test_commands(commands: ESCommandSet, operation: PatchOperation, path: ElasticPath, params: Dict) -> None:
     """Test value at path.
 
     Args:
@@ -227,17 +217,13 @@ def operations_to_script(operations: List, create_nest: bool = True) -> Dict:
         Dict: elasticsearch update script.
     """
     commands: ESCommandSet = ESCommandSet()
-    params: Dict = {"nest_obj": {}}
+    params: Dict = {}
 
     for operation in operations:
         path = ElasticPath(path=operation.path)
-        from_path = (
-            ElasticPath(path=operation.from_) if hasattr(operation, "from_") else None
-        )
+        from_path = ElasticPath(path=operation.from_) if hasattr(operation, "from_") else None
 
-        check_commands(
-            commands=commands, op=operation.op, path=path, create_nest=create_nest
-        )
+        check_commands(commands=commands, op=operation.op, path=path, create_nest=create_nest)
         if from_path is not None:
             check_commands(
                 commands=commands,
@@ -261,11 +247,17 @@ def operations_to_script(operations: List, create_nest: bool = True) -> Dict:
             )
 
         if operation.op == "test":
-            test_commands(
-                commands=commands, operation=operation, path=path, params=params
-            )
+            test_commands(commands=commands, operation=operation, path=path, params=params)
 
         source = "".join(commands)
+
+    print(
+        {
+            "source": source,
+            "lang": "painless",
+            "params": params,
+        }
+    )
 
     return {
         "source": source,
