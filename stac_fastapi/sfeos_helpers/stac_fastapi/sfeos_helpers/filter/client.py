@@ -9,6 +9,7 @@ from fastapi import Request
 
 from stac_fastapi.core.base_database_logic import BaseDatabaseLogic
 from stac_fastapi.core.extensions.filter import ALL_QUERYABLES, DEFAULT_QUERYABLES
+from stac_fastapi.core.utilities import get_bool_env
 from stac_fastapi.extensions.core.filter.client import AsyncBaseFiltersClient
 from stac_fastapi.sfeos_helpers.mappings import ES_MAPPING_TYPE_TO_JSON
 
@@ -171,6 +172,11 @@ class EsAsyncBaseFiltersClient(AsyncBaseFiltersClient):
 
             if field_result.pop("$enum", False):
                 enum_fields[field_fqn] = field_result
+
+            if field_name.startswith("alternate:") and get_bool_env(
+                "STAC_ALTERNATE_ASSETS"
+            ):
+                stack.extend(f"primary.{field_name}")
 
         if enum_fields:
             unique_values = await self.database.get_items_unique_values(
