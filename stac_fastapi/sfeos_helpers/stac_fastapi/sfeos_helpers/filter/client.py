@@ -176,7 +176,7 @@ class EsAsyncBaseFiltersClient(AsyncBaseFiltersClient):
             if field_name.startswith("alternate:") and get_bool_env(
                 "STAC_ALTERNATE_ASSETS"
             ):
-                stack.extend(f"primary.{field_name}")
+                stack.extend((f"primary.{field_name}", field_def))
 
         if enum_fields:
             unique_values = await self.database.get_items_unique_values(
