@@ -5,7 +5,6 @@ import os
 import ssl
 from typing import Any, Dict, Set, Union
 
-import certifi
 from elasticsearch._async.client import AsyncElasticsearch
 
 from elasticsearch import Elasticsearch  # type: ignore[attr-defined]
@@ -17,56 +16,16 @@ from stac_fastapi.types.config import ApiSettings
 
 def _es_config() -> Dict[str, Any]:
     # Determine the scheme (http or https)
-    use_ssl = get_bool_env("ES_USE_SSL", default=True)
-    scheme = "https" if use_ssl else "http"
-
-    # Configure the hosts parameter with the correct scheme
-    es_hosts = os.getenv(
-        "ES_HOST", "localhost"
-    ).strip()  # Default to localhost if ES_HOST is not set
-    es_port = os.getenv("ES_PORT", "9200")  # Default to 9200 if ES_PORT is not set
-
-    # Validate ES_HOST
-    if not es_hosts:
-        raise ValueError("ES_HOST environment variable is empty or invalid.")
-
-    hosts = [f"{scheme}://{host.strip()}:{es_port}" for host in es_hosts.split(",")]
-
-    # Initialize the configuration dictionary
-    config: Dict[str, Any] = {
-        "hosts": hosts,
-        "headers": {"accept": "application/vnd.elasticsearch+json; compatible-with=8"},
+    config = {
+        "hosts": ["https://elasticsearch.ceda.ac.uk"],
+        "headers": {
+            "accept": "application/vnd.elasticsearch+json; compatible-with=8",
+            "x-api-key": os.getenv("ES_API_KEY"),
+        },
+        "verify_certs": True,
+        "ssl_show_warn": False,
+        "ssl_version": ssl.TLSVersion.TLSv1_2,
     }
-
-    # Handle API key
-    if api_key := os.getenv("ES_API_KEY"):
-        config["api_key"] = api_key
-
-    http_compress = get_bool_env("ES_HTTP_COMPRESS", default=True)
-    if http_compress:
-        config["http_compress"] = True
-
-    # Handle basic authentication (skip when API key is configured to avoid
-    # ValueError from elasticsearch-py which rejects multiple auth methods)
-    if "api_key" not in config:
-        if (u := os.getenv("ES_USER")) and (p := os.getenv("ES_PASS")):
-            config["http_auth"] = (u, p)
-
-    # Include timeout setting if set
-    if request_timeout := os.getenv("ES_TIMEOUT"):
-        config["request_timeout"] = int(request_timeout)
-
-    # Explicitly exclude SSL settings when not using SSL
-    if not use_ssl:
-        return config
-
-    # Include SSL settings if using https
-    config["ssl_version"] = ssl.TLSVersion.TLSv1_3
-    config["verify_certs"] = get_bool_env("ES_VERIFY_CERTS", default=True)
-
-    # Include CA Certificates if verifying certs
-    if config["verify_certs"]:
-        config["ca_certs"] = os.getenv("CURL_CA_BUNDLE", certifi.where())
 
     return config
 
