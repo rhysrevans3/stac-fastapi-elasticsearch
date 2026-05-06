@@ -1,24 +1,17 @@
 """Filter client implementation for Elasticsearch/OpenSearch."""
 
 import os
-import time
 from collections import deque
-from typing import Any
+from typing import Any, Optional
 
 import attr
-import orjson
 from fastapi import Request
 
 from stac_fastapi.core.base_database_logic import BaseDatabaseLogic
-from stac_fastapi.core.base_settings import ApiBaseSettings
 from stac_fastapi.core.extensions.filter import ALL_QUERYABLES, DEFAULT_QUERYABLES
-from stac_fastapi.core.queryables import merge_queryables
 from stac_fastapi.core.utilities import get_bool_env
 from stac_fastapi.extensions.core.filter.client import AsyncBaseFiltersClient
 from stac_fastapi.sfeos_helpers.mappings import ES_MAPPING_TYPE_TO_JSON
-
-_GLOBAL_QUERYABLES_CACHE: dict[str, Any] | None = None
-_GLOBAL_QUERYABLES_LAST_UPDATED: float = 0.0
 
 
 @attr.s
@@ -26,7 +19,6 @@ class EsAsyncBaseFiltersClient(AsyncBaseFiltersClient):
     """Defines a pattern for implementing the STAC filter extension."""
 
     database: BaseDatabaseLogic = attr.ib()
-    settings: ApiBaseSettings = attr.ib()
 
     @staticmethod
     def _get_excluded_from_queryables() -> set[str]:
@@ -93,7 +85,7 @@ class EsAsyncBaseFiltersClient(AsyncBaseFiltersClient):
 
     async def get_queryables(
         self,
-        collection_id: str | None = None,
+        collection_id: Optional[str] = None,  # noqa: UP045
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Get the queryables available for the given collection_id.
@@ -113,7 +105,7 @@ class EsAsyncBaseFiltersClient(AsyncBaseFiltersClient):
         Returns:
             Dict[str, Any]: A dictionary containing the queryables for the given collection.
         """
-        request: Request | None = kwargs.get("request")
+        request: Optional[Request] = kwargs.get("request")  # noqa: UP045
         url_str = str(request.url) if request else ""
 
         queryables: dict[str, Any] = {
@@ -127,31 +119,6 @@ class EsAsyncBaseFiltersClient(AsyncBaseFiltersClient):
         }
 
         if not collection_id:
-            stac_queryables_config = self.settings.stac_queryables_config
-            if stac_queryables_config and os.path.exists(stac_queryables_config):
-                with open(stac_queryables_config, "rb") as f:
-                    return dict(orjson.loads(f.read()))
-
-            root_queryables_union = self.settings.root_queryables_union
-            if root_queryables_union:
-                global _GLOBAL_QUERYABLES_CACHE, _GLOBAL_QUERYABLES_LAST_UPDATED
-
-                cache_ttl = getattr(self.settings, "queryables_cache_ttl", 1800)
-                if _GLOBAL_QUERYABLES_CACHE and (
-                    time.time() - _GLOBAL_QUERYABLES_LAST_UPDATED < cache_ttl
-                ):
-                    return _GLOBAL_QUERYABLES_CACHE
-
-                all_collection_queryables = (
-                    await self.database.get_all_collection_queryables()
-                )
-                merged_queryables = merge_queryables(all_collection_queryables)
-
-                _GLOBAL_QUERYABLES_CACHE = merged_queryables
-                _GLOBAL_QUERYABLES_LAST_UPDATED = time.time()
-
-                return merged_queryables
-
             return queryables
 
         properties = queryables["properties"].copy()
@@ -220,4 +187,5 @@ class EsAsyncBaseFiltersClient(AsyncBaseFiltersClient):
             for field_fqn, values in unique_values.items():
                 enum_fields[field_fqn]["enum"] = values
 
+        return queryables
         return queryables

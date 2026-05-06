@@ -35,7 +35,7 @@ from stac_fastapi.extensions.core import (
     TransactionExtension,
 )
 from stac_fastapi.sfeos_helpers.aggregation import EsAsyncBaseAggregationClient
-from stac_fastapi.sfeos_helpers.mappings import ITEMS_INDEX_PREFIX
+from stac_fastapi.sfeos_helpers.mappings import ITEMS_ALIAS_PREFIX
 from stac_fastapi.types.config import Settings
 
 os.environ.setdefault("ENABLE_COLLECTIONS_SEARCH_ROUTE", "true")
@@ -172,7 +172,7 @@ async def delete_collections_and_items(txn_client: TransactionsClient) -> None:
     await refresh_indices(txn_client)
     await txn_client.database.delete_items()
     await txn_client.database.delete_collections()
-    await txn_client.database.client.indices.delete(index=f"{ITEMS_INDEX_PREFIX}*")
+    await txn_client.database.client.indices.delete(index=f"{ITEMS_ALIAS_PREFIX}*")
     await txn_client.database.async_index_selector.refresh_cache()
 
 
