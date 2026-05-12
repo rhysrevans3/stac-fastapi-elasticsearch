@@ -1597,7 +1597,7 @@ class DatabaseLogic(BaseDatabaseLogic):
             # Reindex items from the old collection to the new collection
             await self.client.reindex(
                 body={
-                    "dest": {"index": index_alias_by_collection_id(collection['id'])},
+                    "dest": {"index": index_alias_by_collection_id(collection["id"])},
                     "source": {"index": index_alias_by_collection_id(collection_id)},
                     "script": {
                         "lang": "painless",
@@ -2031,5 +2031,4 @@ class DatabaseLogic(BaseDatabaseLogic):
             index=COLLECTIONS_INDEX,
             id=catalog_id,
             refresh=refresh,
-        )
         )
