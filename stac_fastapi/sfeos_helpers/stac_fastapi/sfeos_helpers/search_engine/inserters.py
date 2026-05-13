@@ -276,11 +276,11 @@ class DatetimeIndexInserter(BaseIndexInserter):
                 datetime=str(
                     extract_date(latest_item["_source"]["properties"]["datetime"])
                 ),
-                end_datetime=str(
-                    extract_first_date_from_index(aliases_dict["end_datetime"])
-                )
-                if aliases_dict.get("end_datetime")
-                else None,
+                end_datetime=(
+                    str(extract_first_date_from_index(aliases_dict["end_datetime"]))
+                    if aliases_dict.get("end_datetime")
+                    else None
+                ),
             )
 
             is_first_split = not any(
@@ -366,7 +366,7 @@ class SimpleIndexInserter(BaseIndexInserter):
         Returns:
             bool: True, as simple strategy creates collection indexes.
         """
-        return True
+        return False
 
     async def create_simple_index(self, client: Any, collection_id: str) -> str:
         """Create a simple index asynchronously.

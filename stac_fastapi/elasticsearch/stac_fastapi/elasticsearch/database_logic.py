@@ -1,4 +1,5 @@
 """Database logic."""
+
 import asyncio
 import logging
 import os
@@ -1091,6 +1092,16 @@ class DatabaseLogic(BaseDatabaseLogic):
         if not await self.client.exists(index=COLLECTIONS_INDEX, id=collection_id):
             raise NotFoundError(f"Collection {collection_id} does not exist")
 
+    async def check_collection_item_index_exists(self, collection_id: str):
+        """Database logic to check if a collection's item index exists."""
+
+        if not self.client.indices.exists(
+            index=index_alias_by_collection_id(collection_id)
+        ):
+            await self.async_index_inserter.create_simple_index(
+                self.client, collection_id
+            )
+
     async def _check_item_exists_in_collection(
         self, collection_id: str, item_id: str
     ) -> bool:
@@ -1142,6 +1153,7 @@ class DatabaseLogic(BaseDatabaseLogic):
 
         """
         await self.check_collection_exists(collection_id=item["collection"])
+        await self.check_collection_item_index_exists(collection_id=item["collection"])
 
         return self.item_serializer.stac_to_db(item, base_url)
 
@@ -1169,8 +1181,9 @@ class DatabaseLogic(BaseDatabaseLogic):
         """
         logger.debug(f"Preparing item {item['id']} in collection {item['collection']}.")
 
-        # Check if the collection exists
+        # Check if the collection and item index exists
         await self.check_collection_exists(collection_id=item["collection"])
+        await self.check_collection_item_index_exists(collection_id=item["collection"])
 
         # Serialize the item into a database-compatible format
         prepped_item = self.item_serializer.stac_to_db(item, base_url)
@@ -1577,11 +1590,6 @@ class DatabaseLogic(BaseDatabaseLogic):
             refresh=refresh,
         )
 
-        if self.async_index_inserter.should_create_collection_index():
-            await self.async_index_inserter.create_simple_index(
-                self.client, collection_id
-            )
-
     @retry_on_connection_error
     async def find_collection(self, collection_id: str) -> Collection:
         """Find and return a collection from the database.
@@ -1651,9 +1659,11 @@ class DatabaseLogic(BaseDatabaseLogic):
         collection_dict = (
             collection
             if isinstance(collection, dict)
-            else collection.model_dump()
-            if hasattr(collection, "model_dump")
-            else dict(collection)
+            else (
+                collection.model_dump()
+                if hasattr(collection, "model_dump")
+                else dict(collection)
+            )
         )
 
         # Handle collection ID change
