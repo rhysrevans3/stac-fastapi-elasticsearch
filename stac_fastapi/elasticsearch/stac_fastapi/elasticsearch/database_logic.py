@@ -1,4 +1,5 @@
 """Database logic."""
+
 import asyncio
 import logging
 import os
@@ -24,7 +25,9 @@ from stac_fastapi.core.serializers import (
     ItemSerializer,
 )
 from stac_fastapi.core.utilities import MAX_LIMIT, bbox2polygon, get_bool_env
-from stac_fastapi.elasticsearch.config import AsyncElasticsearchSettings
+from stac_fastapi.elasticsearch.config import (
+    AsyncElasticsearchSettings,
+)
 from stac_fastapi.elasticsearch.config import (
     ElasticsearchSettings as SyncElasticsearchSettings,
 )
@@ -1277,22 +1280,34 @@ class DatabaseLogic(BaseDatabaseLogic):
                     )
 
         # Prepare the item for insertion
-        item = await self.async_prep_create_item(item=item, base_url=base_url)
+        prepped_item = await self.async_prep_create_item(item=item, base_url=base_url)
 
-        target_index = await self.async_index_inserter.get_target_index(
-            collection_id, item
-        )
         # Index the item in the database
         try:
+            target_index = await self.async_index_inserter.get_target_index(
+                collection_id, prepped_item
+            )
+
             await self.client.index(
                 index=target_index,
                 id=mk_item_id(item_id, collection_id),
-                document=item,
+                document=prepped_item,
                 refresh=refresh,
                 **({} if upsert else {"op_type": "create"}),
             )
         except ESConflictError:
             raise ItemAlreadyExistsError(item_id, collection_id)
+
+        except ESNotFoundError:
+            if self.async_index_inserter.should_create_collection_index():
+                await self.async_index_inserter.create_simple_index(
+                    self.client, collection_id
+                )
+                await self.create_item(
+                    item=item, base_url=base_url, upsert=upsert, **kwargs
+                )
+            else:
+                raise
 
     @retry_on_connection_error
     async def merge_patch_item(
@@ -1577,11 +1592,6 @@ class DatabaseLogic(BaseDatabaseLogic):
             refresh=refresh,
         )
 
-        if self.async_index_inserter.should_create_collection_index():
-            await self.async_index_inserter.create_simple_index(
-                self.client, collection_id
-            )
-
     @retry_on_connection_error
     async def find_collection(self, collection_id: str) -> Collection:
         """Find and return a collection from the database.
@@ -1651,9 +1661,11 @@ class DatabaseLogic(BaseDatabaseLogic):
         collection_dict = (
             collection
             if isinstance(collection, dict)
-            else collection.model_dump()
-            if hasattr(collection, "model_dump")
-            else dict(collection)
+            else (
+                collection.model_dump()
+                if hasattr(collection, "model_dump")
+                else dict(collection)
+            )
         )
 
         # Handle collection ID change
